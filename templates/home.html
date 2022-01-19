@@ -1,0 +1,40 @@
+{% extends "index.html" %}
+{% block body %}
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head">
+    <meta charset="utf-8"/>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'style.css') }}" />
+
+   
+</head>
+
+
+  
+    <h1>Generate QR code</h1>
+    <img id="picture" src="data:image/jpeg;base64,{{ img_data }} " >
+    <div>
+        <form action="{{ url_for('home')}}" method="post">
+         
+            <!-- <label for="dropdown">Choose Network:</label> -->
+            
+            <select name="siname" id='dropdown'>
+                <option color="black" value="agbsb">agbsb</option>
+                <option value="agbta">agbta</option>
+                <option value="bakg">bakg</option>
+            </select>
+        </br>
+            <button type="submit" class="btn">Display QR-code</button>
+            
+        </form>
+        {%if mth=='POST' %}
+        <form action="{{ url_for('send')}}" method="get">
+            <button type="submit" class="btn">Download QR-code</button>
+        </form>
+        {% endif %}
+    </div>
+{% endblock %}
+
+</html>

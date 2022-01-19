@@ -1,0 +1,155 @@
+{% extends "index.html" %}
+{% block body %}
+ <div class="row"><h3>   Add Equipment </h3></div>
+  <div class="row">
+    <div class="col-md-4">
+      {% with messages = get_flashed_messages()  %}
+      {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">×</span>
+        </button>
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+      <div class="card card-body">
+        <form action="{{url_for('add_equipments_log')}}" method="POST">
+        
+          <div class="form-group"> 
+            <label for="status">EQUIPMENT ID</label>
+            <input type="text" class="form-control" name="eq_id" placeholder="eq_id (example: '0002001')" autocomplete="on" required>
+          </div>
+          <div class="form-group">
+             <label for="eq_type">EQUIPMENT TYPE</label>
+             <select class="form-control" name="eq_type">
+             <option>Custom Due</option>
+             <option>Ublox board</option>
+             <option>Surficial Tilt board</option>
+             <option>ISM</option>
+             <option>arQ</option>
+             <option>Battery</option>
+             <option>Rain Gauge</option>
+             <option>rPI</option>
+             <option>LORA</option>
+             <option>rPI Shield</option>
+             <option>LORA Shield</option>
+             <option>GSM Antenna</option>
+             <option>LORA Antenna</option>
+             <option>Ublox Antenna</option>
+             <option>Solar Panel</option>
+             <option>Solar Charge Controller</option>
+             <option>pedestal</option>
+             <option>datalogger box</option>
+         </select>
+          </div>
+          <div class="form-group">
+             <label for="site">DATALOGGER NAME</label>
+             <select class="form-control" name="site">
+             
+             <option>agbsb</option> <option>agbta</option> <option>bakg</option>   <option>bakta</option>                               
+             <option>baktb</option>  <option>baktc</option>  <option>banta</option> <option>bantb</option>
+             <option>barsc</option> <option>barta</option> <option>bartb</option> <option>bayg</option>
+             <option>baysb</option> <option>bayta</option> <option>baytc</option>   <option>blcpz</option>                               
+             <option>blcsb</option>  <option>blcta</option>  <option>bolra</option> <option>bolta</option>
+             <option>btog</option> <option>btota</option> <option>btotb</option> <option>carta</option>
+             <option>cartc</option>
+             <option>cartd</option> <option>cudta</option> <option>cudtb</option>   <option>dadra</option>                               
+             <option>dadta</option>  <option>dadtb</option>  <option>gaasa</option> <option>gaatc</option>
+             <option>gamra</option> <option>gam</option>
+              <option>gamt</option> <option>hinsa</option> <option>hinsb</option>
+             <option>humb</option> <option>humt</option> <option>imera</option>   <option>imesb</option>                               
+             <option>imeta</option>  <option>imug</option>  <option>imuta</option> <option>imutd</option>
+             <option>imute</option> <option>inag</option> <option>inata</option> <option>inatb</option>
+             <option>inatc</option> <option>inaxa</option> <option>jorta</option>   <option>labb</option>                               
+             <option>labt</option>  <option>laysa</option>  <option>laysb</option> <option>lipb</option>
+             <option>lipra</option> <option>lipt</option> <option>loota</option> <option>lootb</option>
+             <option>lpasa</option> <option>lpasb</option> <option>lteg</option>   <option>ltesa</option>                               
+             <option>ltetb</option>  <option>lung</option>  <option>luntc</option> <option>luntd</option>
+             <option>magg</option>  <option>magta</option> <option>magtb</option> <option>magte</option>
+             <option>mampz</option>
+             <option>mamta</option> <option>mamtb</option> <option>marg</option>   <option>marta</option>                               
+             <option>martb</option>  <option>mcata</option>  <option>mngsa</option> <option>mngtb</option>
+             <option>mslg</option> <option>mslta</option> <option>msuta</option> <option>nagtb</option>
+             <option>nurta</option> <option>nurtb</option> <option>oslb</option>   <option>parta</option>                               
+             <option>partb</option>  <option>pepg</option>  <option>pepsb</option> <option>peptc</option>
+             <option>pinra</option> <option>plab</option> <option>plat</option> <option>pngta</option>
+             <option>pngtb</option> <option>pugra</option> <option>sagta</option>   <option>sagtb</option>                               
+             <option>sibta</option>  <option>sinsa</option>  <option>sintb</option> <option>sinna</option>
+             <option>sinnb</option>  <option>sinuar</option> <option>sumta</option>                                                              
+             <option>sumtc</option> <option>talra</option> <option>talsa</option> <option>taltb</option>
+             <option>tgata</option> <option>umita</option> 
+             
+          </select>
+          </div>
+          <div class="form-group">
+             <label for="status">STATUS</label>
+             <select class="form-control" name="status">
+             <option>OK</option>
+             <option>NOT OK</option>
+             <option>Deactivated</option>
+        
+          </select>
+          </div>
+                 
+          <div class="form-group">
+            <input type="date" class="form-control" name="date_updated" placeholder="date_updated" required>
+          </div>
+          <div class="form-group">
+            <input type="text" class="form-control" name="remarks" placeholder="remarks" >
+          </div>
+          <button class="btn btn-primary btn-block">
+            Save 
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="col-md-8">
+      <table id="example" class="table table-striped table-bordered" style="width:100%">
+        <thead>
+          <tr>
+            <td>Inv_ID</td>
+            <td>eq_id</td>
+            <td>Equipment Type</td>
+            <td>Datalogger Name</td>
+            <td>Status</td>
+            <td>Date</td>
+            <td>Remarks</td>
+            <td>Action</td>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in list_users %}
+          <tr>
+            <td>{{row[0]}}</td>
+             <td>{{row[1]}}</td>
+            <td>{{row[2]}}</td>
+            <td>{{row[3]}}</td>
+            <td>{{row[4]}}</td>
+            <td width="130">{{row[5]}}</td>
+              <td>{{row[6]}}</td>
+            <td width="150">
+             <a href="/edit/{{row[0]}}" class="btn btn-warning btn-xs" data-toggle="modal" >edit</a> 
+
+            </td>
+          </tr>
+          
+ 
+          
+          {% endfor %}
+          
+
+ 
+ 
+         
+             
+        
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+  
+{% endblock %}

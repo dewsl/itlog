@@ -1,0 +1,71 @@
+
+
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"">
+  <head th:fragment="head">
+  <style>
+.btn {
+  background-color: DodgerBlue;
+  border: none;
+  color: white;
+  padding: 12px 30px;
+  cursor: pointer;
+  font-size: 20px;
+}
+
+/* Darker background on mouse-over */
+.btn:hover {
+  background-color: RoyalBlue;
+}
+</style>
+    <meta charset="utf-8"/>
+    
+    <title>Internal Tracking Log (ITLog) Data Management</title>
+<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>  
+  
+<script src="https://cdn.datatables.net/1.10.16/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.16/js/dataTables.bootstrap4.min.js"></script>
+</head>
+<body>
+ <nav class="navbar navbar-dark bg-dark">
+    <a class="navbar-brand" href="/" data-toggle="modal" >EQUIPMENT LOGGER LOGS MANAGEMENT</a>
+    
+     <a href="/site" class="navbar-brand" data-toggle="modal"  >Datalogger History</a>
+       <a href="/img" class="navbar-brand" data-toggle="modal"  >QR Code</a>
+    </nav>
+   
+    <div class="container pt-4">
+      {% block body %}
+       <td></td>
+       <td><div class="bd-example" align="middle">
+
+<img src="{{url_for('static', filename='imagesrc')}}" align="bottom" />
+ </td> </div>
+      {% endblock %}
+    </div>
+    
+  
+
+    
+    <script>
+
+
+  
+$(document).ready(function() {
+    $('#example').DataTable({     
+      "aLengthMenu": [[10, 25, 50, -1], [ 10, 25, 50, "All"]],
+        "iDisplayLength": 10
+         
+       } 
+    );
+} );
+  
+</script>
+
+
+       
+
+</body>
+</html>
