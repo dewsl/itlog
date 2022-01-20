@@ -6,6 +6,7 @@ import DynaslopeLogo from '../assets/dynaslope_seal.png';
 import PhivolcsLogo from '../assets/dost_seal.png';
 import Fingerprint from '../assets/finger_print.png';
 import { TextInput } from 'react-native-paper';
+import BGOne from '../assets/bg1.png';
 
 const Signin = (props) => {
 
@@ -15,6 +16,10 @@ const Signin = (props) => {
 
     return(
         <Fragment>
+            <ImageBackground source={BGOne} resizeMode="stretch" style={{
+                flex: 1,
+                justifyContent: "center"
+            }}>
             <View style={{flex: 1}}>
                 <View style={{flex: 1, padding: 20, textAlign: 'center', justifyContent: 'center', alignItems: 'center'}}>
                     <View style={{flexDirection: 'row', padding: 15}}>
@@ -41,6 +46,7 @@ const Signin = (props) => {
                             outlineColor='#16526d'
                             activeOutlineColor='#16526d'
                             mode="outlined"
+                            type="password"
                             onChangeText={text => setPassword(text)}
                         />
                     </View>
@@ -60,6 +66,7 @@ const Signin = (props) => {
                     <Text style={[systemWeights.light]}>Scan Fingerprint to login</Text>
                 </View>
             </View>
+            </ImageBackground>
         </Fragment>
     )
 }
