@@ -1,13 +1,15 @@
 import React, { Fragment, useState, useEffect } from 'react';
 import { View, Text, ScrollView, StyleSheet, ImageBackground } from 'react-native';
-import { DataTable, TextInput } from 'react-native-paper';
+import { DataTable, shadow, TextInput } from 'react-native-paper';
 import SelectDropdown from 'react-native-select-dropdown'
 import FontAwesome from "react-native-vector-icons/FontAwesome";
 import { systemWeights } from 'react-native-typography'
 import { Divider } from 'react-native-paper';
 import { Button } from 'react-native-paper';
 import { IconButton, Colors } from 'react-native-paper';
-import BGTwo from '../assets/bg2.png'
+import BGTwo from '../assets/bg2.png';
+import { fetchEquipmentType, fetchLoggers } from './apis/EquipmentManagerAPI';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const EquipmentManager = () => {
     const optionsPerPage = [2, 3, 4];
@@ -15,9 +17,57 @@ const EquipmentManager = () => {
     const [itemsPerPage, setItemsPerPage] = useState(optionsPerPage[0]);
     const [temp, setTemp] = useState("");
 
+    const [equipmentTypes, setEquipmentTypes] = useState([]);
+    const [equipmentList, setEquipmentList] = useState([]);
+
+    const [dataLoggers, setDataLoggers] = useState([]);
+    const [dataLoggerList, setDataLoggerList] = useState([]);
+    const [equipmentEntry, setEquipmentEntry] = useState({
+        equipment_id: '',
+        type: '',
+        logger: '',
+        status: false,
+        timestamp: new Date(),
+        remarks: ''
+    })
+
+    const [mode, setMode] = useState('date');
+    const [show, setShow] = useState(false);
+
     useEffect(() => {
       setPage(0);
     }, [itemsPerPage]);
+
+    useEffect(() => {
+        fetchEquipmentType(setEquipmentTypes);
+        fetchLoggers(setDataLoggers);
+    }, [])
+    
+    useEffect(() => {
+        let temp = [];
+        if (equipmentTypes.length > 0) {
+            equipmentTypes.forEach(element => {
+                temp.push(element.equipment_name);
+            });
+        }
+        setEquipmentList(temp);
+    }, [equipmentTypes]);
+
+    useEffect(() => {
+        let temp = [];
+        if (dataLoggers.length > 0) {
+            dataLoggers.forEach(element => {
+                temp.push(element.logger_name);
+            });
+        }
+        setDataLoggerList(temp);
+    }, [dataLoggers]);
+
+    const handleDatePicker = (event, selectedDate) => {
+        const currentDate = selectedDate || equipmentEntry.timestamp;
+        setEquipmentEntry({...equipmentEntry, timestamp: currentDate});
+        setShow(!show);
+      };
 
     return(
         <Fragment>
@@ -32,25 +82,21 @@ const EquipmentManager = () => {
                         <TextInput
                             mode="outlined"
                             label="Equipment ID"
+                            value={equipmentEntry.equipment_id}
                             style={styles.textInput}
-                            onChangeText={text => setTemp(text)}
+                            onChangeText={text => setEquipmentEntry({...equipmentEntry, equipment_id: text})}
                         />
                         <SelectDropdown
-                            // key={index}
-                            data={[]}
+                            data={equipmentList}
                             defaultButtonText={"Equipment Type"}
                             onSelect={(selectedItem, index) => {
-                                console.log(selectedItem, index)
+                                setEquipmentEntry({...equipmentEntry, type: selectedItem});
                             }}
                             buttonTextAfterSelection={(selectedItem, index) => {
-                                // text represented after item is selected
-                                // if data array is an array of objects then return selectedItem.property to render after item is selected
-                                return selectedItem
+                                return selectedItem.toUpperCase()
                             }}
                             rowTextForSelection={(item, index) => {
-                                // text represented for each item in dropdown
-                                // if data array is an array of objects then return item.property to represent item in dropdown
-                                return item
+                                return item.toUpperCase()
                             }}
                             buttonStyle={styles.dropdown1BtnStyle}
                             buttonTextStyle={styles.dropdown1BtnTxtStyle}
@@ -64,21 +110,16 @@ const EquipmentManager = () => {
                             rowStyle={styles.dropdown1RowStyle}
                         />
                         <SelectDropdown
-                            // key={index}
-                            data={[]}
+                            data={dataLoggerList}
                             defaultButtonText={"Data Logger name"}
                             onSelect={(selectedItem, index) => {
-                                console.log(selectedItem, index)
+                                setEquipmentEntry({...equipmentEntry, logger: selectedItem});
                             }}
                             buttonTextAfterSelection={(selectedItem, index) => {
-                                // text represented after item is selected
-                                // if data array is an array of objects then return selectedItem.property to render after item is selected
-                                return selectedItem
+                                return selectedItem.toUpperCase()
                             }}
                             rowTextForSelection={(item, index) => {
-                                // text represented for each item in dropdown
-                                // if data array is an array of objects then return item.property to represent item in dropdown
-                                return item
+                                return item.toUpperCase()
                             }}
                             buttonStyle={styles.dropdown1BtnStyle}
                             buttonTextStyle={styles.dropdown1BtnTxtStyle}
@@ -93,19 +134,15 @@ const EquipmentManager = () => {
                         />
                         <SelectDropdown
                             // key={index}
-                            data={[]}
+                            data={['Active', 'In Active']}
                             defaultButtonText={"Status"}
                             onSelect={(selectedItem, index) => {
-                                console.log(selectedItem, index)
+                                setEquipmentEntry({...equipmentEntry, status: selectedItem});
                             }}
                             buttonTextAfterSelection={(selectedItem, index) => {
-                                // text represented after item is selected
-                                // if data array is an array of objects then return selectedItem.property to render after item is selected
                                 return selectedItem
                             }}
                             rowTextForSelection={(item, index) => {
-                                // text represented for each item in dropdown
-                                // if data array is an array of objects then return item.property to represent item in dropdown
                                 return item
                             }}
                             buttonStyle={styles.dropdown1BtnStyle}
@@ -123,14 +160,18 @@ const EquipmentManager = () => {
                             mode="outlined"
                             label="Timestamp"
                             style={styles.textInput}
-                            onChangeText={text => setTemp(text)}
+                            // onChangeText={text => setTemp(text)}
+                            onFocus={()=> {
+                                setShow(!show)
+                            }}
                         />
                         <TextInput
                             mode="outlined"
                             multiline={true}
                             label="Remarks"
+                            value={equipmentEntry.remarks}
                             style={[styles.textInput, {height: 200}]}
-                            onChangeText={text => setTemp(text)}
+                            onChangeText={text => setEquipmentEntry({...equipmentEntry, remarks: text})}
                         />
                         <View style={{flexDirection: 'row', justifyContent: 'center', alignItems: 'center'}}>
                             <IconButton
@@ -197,6 +238,16 @@ const EquipmentManager = () => {
                         />
                     </View>
                 </View>
+                {show && (
+                    <DateTimePicker
+                    testID="dateTimePicker"
+                    value={equipmentEntry.timestamp}
+                    mode={mode}
+                    is24Hour={true}
+                    display="default"
+                    onChange={handleDatePicker}
+                    />
+                )}
             </ScrollView>
             </ImageBackground>
         </Fragment>

@@ -7,12 +7,48 @@ import PhivolcsLogo from '../assets/dost_seal.png';
 import Fingerprint from '../assets/finger_print.png';
 import { TextInput } from 'react-native-paper';
 import BGOne from '../assets/bg1.png';
+import { signin } from './apis/UserManagementAPI';
+import SweetAlert from 'react-native-sweet-alert';
 
 const Signin = (props) => {
 
     const navigator = props.navigation;
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
+    const [credentials, setCreds] = useState(null);
+
+    const handleSignin = () => {
+        signin({
+            username: username,
+            password: password
+        }, setCreds);
+    }
+
+    useEffect(()=> {
+        if (credentials) {
+            console.log(credentials);
+            if (credentials.ok == true) {
+                SweetAlert.showAlertWithOptions({
+                    title: 'Login success',
+                    confirmButtonTitle: 'OK',
+                    confirmButtonColor: '#000',
+                    otherButtonTitle: 'Cancel',
+                    otherButtonColor: '#dedede',
+                    style: 'success',
+                    },
+                    callback => navigator.navigate('Home'));
+            } else {
+                SweetAlert.showAlertWithOptions({
+                    title: 'Login failed',
+                    subTitle: 'Incorrect username/password provided',
+                    confirmButtonTitle: 'Retry',
+                    confirmButtonColor: '#ff0000',
+                    otherButtonColor: '#ff0000',
+                    style: 'error',
+                  }, callback => setCreds(null));
+            }
+        }
+    }, [credentials]);
 
     return(
         <Fragment>
@@ -46,13 +82,13 @@ const Signin = (props) => {
                             outlineColor='#16526d'
                             activeOutlineColor='#16526d'
                             mode="outlined"
-                            type="password"
+                            secureTextEntry={true}
                             onChangeText={text => setPassword(text)}
                         />
                     </View>
                     <View style={{width: '100%', padding: 10}}>
                         <Button mode="contained" style={{backgroundColor: '#16526d'}} onPress={() => {
-                            navigator.navigate('Home');
+                            handleSignin()
                         }}>
                             Signin
                         </Button>
