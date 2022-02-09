@@ -64,25 +64,31 @@ const DataLoggerHistory = () => {
                         <ScrollView>
                             {
                                 loggerList.length != 0 && loggerList.map(element =>(
-                                    <TouchableOpacity key={element.logger_id} style={{flex: 1, justifyContent: 'flex-end', backgroundColor: element.img_path == null && `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, height: 150, width: '100%'}} onPress={()=> {
-                                        if (pressHold != true) {
-                                            setShowModal(!showModal)
-                                        }
-                                    }}
-                                    onLongPress={()=> {
-                                        handleLongPress(`http://192.168.1.2:5000/${element.img_path}`)
-                                    }}
-                                    onPressOut={()=> {
-                                        setPressHold(false);
-                                        setImageThumbnail(null);
-                                    }}>
-                                        {
-                                            element.img_path != null && <Image source={{uri: `http://192.168.1.2:5000/${element.img_path}`}} resizeMode='cover' style={{flex: 1}} />
-                                        }
-                                        <View style={{alignItems: 'flex-end', justifyContent: 'flex-end', height: 40, width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.9)'}}>
-                                            <Text style={[systemWeights.semibold, {marginBottom: 5, marginRight: 5}]}>Logger: {element.logger_name.toUpperCase()} | Last modification: {element.last_updated != null ? moment(element.last_updated).format("YYYY-MM-DD HH:mm:ss") : 'N/A'}</Text>
-                                        </View>
-                                    </TouchableOpacity>
+                                    element.last_updated != null &&
+                                        <TouchableOpacity key={element.logger_id} style={{flex: 1, justifyContent: 'flex-end', backgroundColor: element.img_path == null && `#${Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')}`, height: 150, width: '100%'}} onPress={()=> {
+                                            if (pressHold != true) {
+                                                setShowModal(!showModal)
+                                            }
+                                        }}
+                                        onLongPress={()=> {
+                                            handleLongPress(`http://192.168.150.138:5000/${element.img_path}`)
+                                        }}
+                                        onPressOut={()=> {
+                                            setPressHold(false);
+                                            setImageThumbnail(null);
+                                        }}>
+                                            {
+                                                element.img_path != null && <ImageBackground source={{uri: `http://192.168.150.138:5000/${element.img_path}`}} resizeMode='cover' style={{flex: 1}}>
+                                                    <View style={{flex: 0.74}}/>
+                                                    <View style={{flex: 0.26}}>
+                                                        <View style={{alignItems: 'flex-end', justifyContent: 'flex-end', height: 40, width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.8)'}}>
+                                                            <Text style={[systemWeights.semibold, {marginBottom: 0, marginRight: 5, color: '#465242'}]}>Logger: {element.logger_name.toUpperCase()}</Text>
+                                                            <Text style={[systemWeights.semibold, {marginBottom: 5, marginRight: 5, color: '#465242'}]}>Last modification: {element.last_updated != null ? moment(element.last_updated).format("YYYY-MM-DD HH:mm:ss") : 'N/A'}</Text>
+                                                        </View>
+                                                    </View>
+                                                </ImageBackground>
+                                            }
+                                        </TouchableOpacity>
                                 ))
                             }
                         </ScrollView>

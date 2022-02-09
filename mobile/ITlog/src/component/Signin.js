@@ -9,6 +9,7 @@ import { TextInput } from 'react-native-paper';
 import BGOne from '../assets/bg1.png';
 import { signin } from './apis/UserManagementAPI';
 import SweetAlert from 'react-native-sweet-alert';
+import { storeData, getData } from '../utility/cache';
 
 const Signin = (props) => {
 
@@ -25,9 +26,13 @@ const Signin = (props) => {
     }
 
     useEffect(()=> {
+        getData('credentials', setCreds);
+    }, []);
+
+    useEffect(()=> {
         if (credentials) {
-            console.log(credentials);
             if (credentials.ok == true) {
+                storeData('credentials', credentials);
                 SweetAlert.showAlertWithOptions({
                     title: 'Login success',
                     confirmButtonTitle: 'OK',
@@ -62,7 +67,7 @@ const Signin = (props) => {
                         <Image source={PhivolcsLogo} />
                         <Image source={DynaslopeLogo} />
                     </View>
-                    <Text style={[systemWeights.bold, {fontSize: 25, paddingBottom: 10}]}>Internal Tracking Log</Text>
+                    <Text style={[systemWeights.bold, {fontSize: 25, paddingBottom: 10, color: '#465242'}]}>Internal Tracking Log</Text>
                     <View style={{width: '100%', padding: 10}}>
                         <TextInput
                             label="Username"
@@ -95,7 +100,7 @@ const Signin = (props) => {
                     </View>
                     <View style={{flexDirection: 'row', padding: 15}}>
                         <View style={[systemWeights.light, {backgroundColor: '#16526d', height: 2, flex: 1, alignSelf: 'center'}]} />
-                        <Text style={[systemWeights.light, { alignSelf:'center', paddingHorizontal:5, fontSize: 20 }]}>OR</Text>
+                        <Text style={[systemWeights.light, { alignSelf:'center', paddingHorizontal:5, fontSize: 20, color: '#465242' }]}>OR</Text>
                         <View style={[systemWeights.light, {backgroundColor: '#16526d', height: 2, flex: 1, alignSelf: 'center'}]} />
                     </View>
                     <Image source={Fingerprint} />
