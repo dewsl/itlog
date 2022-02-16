@@ -1,5 +1,5 @@
 import React, { Fragment, useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ImageBackground, PermissionsAndroid  } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ImageBackground, PermissionsAndroid, Image } from 'react-native';
 import { DataTable, shadow, TextInput } from 'react-native-paper';
 import SelectDropdown from 'react-native-select-dropdown'
 import FontAwesome from "react-native-vector-icons/FontAwesome";
@@ -17,8 +17,10 @@ import {
 } from './apis/EquipmentManagerAPI';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
-import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import SweetAlert from 'react-native-sweet-alert';
+import Modal from "react-native-modal";
+import { TouchableOpacity } from 'react-native-gesture-handler';
 
 const EquipmentManager = () => {
 
@@ -33,6 +35,8 @@ const EquipmentManager = () => {
 
     const [returnVal, setReturnVal] = useState(null);
 
+    const [selectedEquipment, setSelectedEquipment] = useState(null);
+
     const [dataLoggers, setDataLoggers] = useState([]);
     const [dataLoggerList, setDataLoggerList] = useState([]);
     const [equipmentEntry, setEquipmentEntry] = useState({
@@ -42,7 +46,9 @@ const EquipmentManager = () => {
         status: false,
         timestamp: new Date(),
         remarks: ''
-    })
+    });
+
+    const [imageFiles, setImageFiles] = useState([]);
 
     const [mode, setMode] = useState('date');
     const [show, setShow] = useState(false);
@@ -53,7 +59,16 @@ const EquipmentManager = () => {
     const from = page * numberOfItemsPerPage;
     const to = Math.min((page + 1) * numberOfItemsPerPage, equipments.length);
 
-    const [dataTableContent, setDataTableContent] = useState([]);
+    const [pressHold, setPressHold] = useState(false);
+    const [imageThumbnail, setImageThumbnail] = useState(null);
+
+    const [dataTableContent, setDataTableContent] = useState([
+        <View key={0}>
+            <Text style={{ textAlign: 'center' }}>Fetching equipments...</Text>
+        </View>
+    ]);
+
+    const [showModal, setShowModal] = useState(false);
 
     const ref_input2 = useRef();
 
@@ -148,6 +163,10 @@ const EquipmentManager = () => {
         let type_id = equipmentTypes.find(o => o.equipment_name === equipmentEntry.type).id;
         let status_id = equipmentStatus.find(o => o.status === equipmentEntry.status).id;
         let logger_id = dataLoggers.find(o => o.logger_name === equipmentEntry.logger).id;
+        let storage_path = [];
+        imageFiles.forEach(element => {
+            storage_path.push(`storage/${equipmentEntry.logger}/${element.fileName}`)
+        });
         insertEquiment({
             type_id: type_id,
             status_id: status_id,
@@ -155,8 +174,9 @@ const EquipmentManager = () => {
             date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
             serial: equipmentEntry.equipment_id,
             remarks: equipmentEntry.remarks,
-            storage_path: ''
-        }, setReturnVal, ()=> {fetchEquipmentList(setEquipments)})
+            storage_path: JSON.stringify(storage_path),
+            logger_name: equipmentEntry.logger
+        }, setReturnVal, ()=> {fetchEquipmentList(setEquipments)}, imageFiles)
     }
 
     const handleDatePicker = (event, selectedDate) => {
@@ -204,7 +224,7 @@ const EquipmentManager = () => {
                     alert(res.customButton);
                 } else {
                     const source = { uri: res.uri };
-                    console.log('response', JSON.stringify(res));
+                    setImageFiles([...imageFiles, res.assets[0]]);
                 }
             });
             } else {
@@ -250,13 +270,13 @@ const EquipmentManager = () => {
                                         icon="content-save-edit"
                                         color={"#16526d"}
                                         size={20}
-                                        onPress={() => console.log(row)}
+                                        onPress={() => handleUpdate(row)}
                                     />
                                     <IconButton
                                         icon="view-grid"
                                         color={"#16526d"}
                                         size={20}
-                                        onPress={() => console.log(row)}
+                                        onPress={() => handleView(row)}
                                     />
                                 </View>
                             </DataTable.Cell>
@@ -272,6 +292,36 @@ const EquipmentManager = () => {
             }
         }
         setDataTableContent(temp)
+    }
+
+    const handleUpdate = (props) => {
+        console.log("------------------ UPDATE");
+        console.log(props)
+    }
+
+    const handleView = (props) => {
+        setSelectedEquipment(props);
+        setShowModal(!show);
+    }
+
+    const handleImageViewer = (img_path) => {
+        setPressHold(true);
+        setImageThumbnail(img_path)
+    }
+
+    const handleImageRemove = (image_details) => {
+        if (imageFiles.length > 0) {
+            let temp = imageFiles;
+            let image_index = imageFiles.findIndex(o => o.uri === image_details.uri);
+            let new_list = temp.splice(image_index, 1);
+            setImageFiles(temp);
+        }
+        handleCloseViewer();
+    }
+
+    const handleCloseViewer = () => {
+        setPressHold(false);
+        setImageThumbnail(null);
     }
 
     return(
@@ -389,6 +439,25 @@ const EquipmentManager = () => {
                             />
                             <Text style={[systemWeights.regular, {fontSize: 15, padding: 10, color: '#465242'}]}>Attach / Take photos</Text>
                         </View>
+                        <View style={{flex: 0.45, margin: 10}}>
+                            <Text style={[systemWeights.bold, {fontSize: 25, textAlign: 'center', padding: 10, color: '#465242', width: '100%'}]}>Equipment Gallery</Text>
+                                <ScrollView horizontal={true}>
+                                    {
+                                        imageFiles.length > 0 &&
+                                            imageFiles.map((image)=> (
+                                                <TouchableOpacity style={{padding: 5}}
+                                                    onPress={()=> {
+                                                        handleImageViewer(image)
+                                                    }}>
+                                                    <Image source={{uri: image.uri}} resizeMode='cover' style={{flex: 1, height: 50, width: 50}} />
+                                                </TouchableOpacity>
+                                            ))
+                                    }
+                                </ScrollView>
+                                {
+                                    imageFiles.length == 0 && <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: '#465242'}]}>No photos taken yet</Text>
+                                }
+                        </View>
                         <Button icon="plus-thick" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={submitEquipment}>
                             Add Equipment
                         </Button>
@@ -434,6 +503,62 @@ const EquipmentManager = () => {
                 )}
             </ScrollView>
             </ImageBackground>
+            <Modal isVisible={showModal}
+                onBackdropPress={()=> {setShowModal(!showModal)}}
+                onBackButtonPress={()=> {setShowModal(!showModal)}}
+                onSwipeComplete={() => {setShowModal(!showModal)}}
+                swipeDirection="down">
+                    {
+                        selectedEquipment != null &&
+                            <View style={{ flex: 1 ,backgroundColor: 'white'}}>
+                                <View style={{flex: 0.45, flexDirection: 'row', padding: 10}}>
+                                    <View style={{flex: 0.5}}>
+                                        <Text style={[systemWeights.bold, {fontSize: 15, padding: 10, color: '#465242'}]}>Logger name </Text>
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{dataLoggers.find(o => o.id === selectedEquipment.logger_id).logger_name.toUpperCase()}</Text>
+                                        <Text style={[systemWeights.bold, {fontSize: 15, padding: 10, color: '#465242'}]}>Last Updated </Text>
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{moment(selectedEquipment).format("YYYY-MM-DD HH:mm:ss")}</Text>
+                                        <Text style={[systemWeights.bold, {fontSize: 15, padding: 10, color: '#465242'}]}>Type </Text>
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{equipmentTypes.find(o => o.id === selectedEquipment.type_id).equipment_name}</Text>
+                                        <Text style={[systemWeights.bold, {fontSize: 15, padding: 10, color: '#465242'}]}>Status </Text>
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{equipmentStatus.find(o => o.id === selectedEquipment.status_id).status.toUpperCase()}</Text>
+                                    </View>
+                                    <View style={{flex: 0.5}}>
+                                        <Text style={[systemWeights.bold, {fontSize: 15, padding: 10, color: '#465242'}]}>Remarks </Text>
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{selectedEquipment.remarks === "" ? "No remarks available" : selectedEquipment.remarks === null ? "No remarks available": selectedEquipment.remarks}</Text>
+                                    </View>
+                                </View>
+                                <View style={{flex: 0.45, margin: 10}}>
+                                    <Text style={[systemWeights.bold, {fontSize: 25, textAlign: 'center', padding: 10, color: '#465242'}]}>Equipment Gallery</Text>
+                                    <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: '#465242'}]}>No photos available</Text>
+                                </View>
+                                <View style={{flex: 0.10, textAlign: 'center'}}>
+                                <Button icon="content-save-edit" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={submitEquipment}>
+                                    Update Equipment
+                                </Button>
+                                </View>
+                        </View>
+                    }
+            </Modal>
+            <Modal isVisible={pressHold} 
+                                onBackdropPress={()=> {
+                                    handleCloseViewer()}}
+                                onBackButtonPress={()=> {
+                                    handleCloseViewer()}}
+                                onSwipeComplete={() => {
+                                    handleCloseViewer()}}
+                                swipeDirection="down">
+                {
+                    imageThumbnail != null && 
+                        <ImageBackground source={{uri: imageThumbnail.uri}} resizeMode='cover' style={{flex: 1}} >
+                            <View style={{flex: 1}}/>
+                            <Button icon="delete-forever" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={()=> {
+                                handleImageRemove(imageThumbnail);
+                            }}>
+                                Remove Photo
+                            </Button>
+                        </ImageBackground>
+                }
+            </Modal>
         </Fragment>
     )
 }

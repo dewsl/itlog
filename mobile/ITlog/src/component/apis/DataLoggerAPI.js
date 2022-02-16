@@ -3,9 +3,25 @@ const getDataLoggerList = (callback) => {
         .then(response => response.json())
         .then(data => {
             callback(data.data);
-        })
+    })
+}
+
+
+const fetchAllLoggerRecords = (data, callback) => {
+    console.log( JSON.stringify(data))
+    fetch('http://192.168.150.138:5000/api/fetch/all-datalogger-records', {method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)})
+            .then(response => response.json())
+            .then(data => {
+                callback(data.data);
+            })
 }
 
 export {
-    getDataLoggerList
+    getDataLoggerList,
+    fetchAllLoggerRecords
 }
