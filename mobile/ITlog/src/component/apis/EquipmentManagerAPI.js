@@ -1,7 +1,7 @@
 import RNFS from 'react-native-fs';
 
 const fetchEquipmentType = (callback) => {
-    fetch('http://192.168.150.138:5000/api/fetch/equipment-types')
+    fetch('http://192.168.0.13:5000/api/fetch/equipment-types')
         .then(response => response.json())
         .then(data => {
             if (data.status === 200) {
@@ -11,7 +11,7 @@ const fetchEquipmentType = (callback) => {
 }
 
 const fetchEquipmentStatus = (callback) => {
-    fetch('http://192.168.150.138:5000/api/fetch/equipment-status')
+    fetch('http://192.168.0.13:5000/api/fetch/equipment-status')
     .then(response => response.json())
     .then(data => {
         if (data.status === 200) {
@@ -21,7 +21,7 @@ const fetchEquipmentStatus = (callback) => {
 }
 
 const fetchLoggers = (callback) => {
-    fetch('http://192.168.150.138:5000/api/fetch/data-loggers-list')
+    fetch('http://192.168.0.13:5000/api/fetch/data-loggers-list')
         .then(response => response.json())
         .then(data => {
             if (data.status === 200) {
@@ -31,7 +31,7 @@ const fetchLoggers = (callback) => {
 }
 
 const fetchEquipmentList = (callback) => {
-    fetch('http://192.168.150.138:5000/api/fetch/equipment-list')
+    fetch('http://192.168.0.13:5000/api/fetch/equipment-list')
         .then(response => response.json())
         .then(data => {
             if (data.status === 200) {
@@ -41,24 +41,42 @@ const fetchEquipmentList = (callback) => {
 }
 
 const insertEquiment = (data, callback, container, images) => {
-    fetch('http://192.168.150.138:5000/api/equipment/add', {method: 'POST',
+    fetch('http://192.168.0.13:5000/api/equipment/add', {method: 'POST',
         headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)})
-            .then(response => response.json())
-            .then(res => {
-                // callback(res);
-                // container()
-
+        .then(response => response.json())
+        .then(res => {
+            if (images.length > 0) {
                 if (res.status === 200) {
-                    uploadEquipmentFiles(images, data.logger_name)
+                    uploadEquipmentFiles(images, data.logger_name, callback, container)
                 }
-            })
+            } else {
+                callback(res);
+                container();
+            }
+        }
+    )
 }
 
-const uploadEquipmentFiles = (images, logger_name) => {
+const updateEquipment = (data, callback, container) => {
+    fetch('http://192.168.0.13:5000/api/equipment/update', {method: 'POST',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)})
+        .then(response => response.json())
+        .then(res => {
+            callback(res);
+            container();
+        }
+    )
+}
+
+const uploadEquipmentFiles = (images, logger_name, callback, container) => {
     let fileupload = [];
     images.forEach(file => {
         fileupload.push({
@@ -81,7 +99,7 @@ const uploadEquipmentFiles = (images, logger_name) => {
     };
 
     RNFS.uploadFiles({
-        toUrl: 'http://192.168.150.138:5000/storage/upload/equipment/site',
+        toUrl: 'http://192.168.0.13:5000/storage/upload/equipment/site',
         files: fileupload,
         method: 'POST',
         headers: {
@@ -93,19 +111,14 @@ const uploadEquipmentFiles = (images, logger_name) => {
         begin: uploadBegin,
         progress: uploadProgress
       }).promise.then((response) => {
-        // let data = JSON.parse(response.body);
-        console.log(response)
-        // return {
-        //   'status': true,
-        //   'message': 'Upload success!',
-        //   'file_path': data.file_path
-        // };
+            let ret_val = JSON.parse(response.body);
+            callback(ret_val);
+            container();
       }).catch((err) => {
-          console.warn(err)
-        //  return {
-        //   'status': false,
-        //   'message': `Upload failed! Err: ${err}`
-        // }
+        return {
+          'status': false,
+          'message': `Upload failed! Err: ${err}`
+        }
     });
 }
 
@@ -114,5 +127,6 @@ export {
     fetchLoggers,
     fetchEquipmentStatus,
     insertEquiment,
+    updateEquipment,
     fetchEquipmentList
 }

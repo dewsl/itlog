@@ -1,5 +1,5 @@
-import React, { Fragment, useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ImageBackground, PermissionsAndroid, Image } from 'react-native';
+import React, { Fragment, useState, useEffect, useRef, useCallback } from 'react';
+import { View, Text, ScrollView, StyleSheet, ImageBackground, PermissionsAndroid, Image, RefreshControl, TouchableOpacity } from 'react-native';
 import { DataTable, shadow, TextInput } from 'react-native-paper';
 import SelectDropdown from 'react-native-select-dropdown'
 import FontAwesome from "react-native-vector-icons/FontAwesome";
@@ -13,6 +13,7 @@ import {
     fetchLoggers, 
     fetchEquipmentStatus, 
     insertEquiment,
+    updateEquipment,
     fetchEquipmentList
 } from './apis/EquipmentManagerAPI';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -20,12 +21,13 @@ import moment from 'moment';
 import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import SweetAlert from 'react-native-sweet-alert';
 import Modal from "react-native-modal";
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import Ping from 'react-native-ping';
+
+import { storeData, getData } from '../utility/cache';
 
 const EquipmentManager = () => {
 
     const [equipments, setEquipments] = useState([]);
-    const [equipmentList, setEquipmentList] = useState([]);
 
     const [equipmentTypes, setEquipmentTypes] = useState([]);
     const [equipmentListTypes, setEquipmentListTypes] = useState([]);
@@ -52,6 +54,7 @@ const EquipmentManager = () => {
 
     const [mode, setMode] = useState('date');
     const [show, setShow] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     const numberOfItemsPerPageList = [10, 15, 20];
     const [page, setPage] = useState(0);
@@ -61,6 +64,10 @@ const EquipmentManager = () => {
 
     const [pressHold, setPressHold] = useState(false);
     const [imageThumbnail, setImageThumbnail] = useState(null);
+    const [isUpdate, setIsUpdate] = useState(false);
+
+    const [isConnected, setIsConnected] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(true);
 
     const [dataTableContent, setDataTableContent] = useState([
         <View key={0}>
@@ -71,63 +78,177 @@ const EquipmentManager = () => {
     const [showModal, setShowModal] = useState(false);
 
     const ref_input2 = useRef();
+    const ref_input1 = useRef();
+    const scrollRef = useRef();
+
+    const CheckConnectivity = async () => {
+        let status = null;
+        try {
+            const ms = await Ping.start('192.168.0.13',{ timeout: 1000 });
+            status = true;
+            setIsConnected(true);
+          } catch (error) {
+            status = false;
+            setIsConnected(false);
+          } finally {
+            if (status) {
+                syncLocalToDB();
+                initializeData(status);
+            } else {
+                SweetAlert.showAlertWithOptions({
+                    title: 'Cannot connect to server!',
+                    subTitle: 'Local data will be used.',
+                    confirmButtonTitle: 'Continue',
+                    confirmButtonColor: 'red',
+                    otherButtonColor: '#ff0000',
+                    style: 'error',
+                    showCancelButton: false,
+                    showConfirmButton: true
+                    },
+                    callback => {
+                        loadCachedData();
+                    });
+            }
+          }
+    }
 
     useEffect(() => {
       setPage(0);
     }, [numberOfItemsPerPage]);
 
     useEffect(() => {
-        fetchEquipmentList(setEquipments);
-        fetchEquipmentType(setEquipmentTypes);
-        fetchLoggers(setDataLoggers);
-        fetchEquipmentStatus(setEquipmentStatus);
-    }, [])
+        CheckConnectivity();
+    }, []);
     
-    useEffect(() => {
-        let temp = [];
-        if (equipmentTypes.length > 0) {
-            equipmentTypes.forEach(element => {
-                temp.push(element.equipment_name);
-            });
+    const loadCachedData = () => {
+        getData('equipmentListTypes', (value)=> {
+            setEquipmentListTypes(value);
+        });
+        getData('equipmentStatusList', (value)=> {
+            setEquipmentStatusList(value)
+        });
+        getData('dataLoggerList', (value)=> {
+            setDataLoggerList(value)
+        });
+        getData('equipments', (value)=> {
+            setEquipments(value)
+        });
+
+        getData('equipmentTypes', (value)=> {
+            setEquipmentTypes(value);
+        });
+        getData('equipmentStatus', (value)=> {
+            setEquipmentStatus(value)
+        });
+        getData('dataLoggers', (value)=> {
+            setDataLoggers(value)
+        });
+        setIsSyncing(false);
+    }
+
+    const initializeData = (status) => {
+        if (status) {
+            console.warn("CONNECTED")
+            fetchEquipmentList(setEquipments);
+            fetchEquipmentType(setEquipmentTypes);
+            fetchLoggers(setDataLoggers);
+            fetchEquipmentStatus(setEquipmentStatus);
+            setIsSyncing(false);
+        } else {
+            console.warn("NOT CONNECTED")
         }
-        setEquipmentListTypes(temp);
-    }, [equipmentTypes]);
+    }
+
+    const syncLocalToDB = () => {
+        getData('equipments', (value)=> {
+            value.forEach(element => {
+                if ('isLocal' in element) {
+                    if ('id' in element) {
+                        updateEquipment({
+                            id: element.id,
+                            type_id: element.type_id,
+                            status_id: element.status_id,
+                            logger_id: element.logger_id,
+                            date_last_updated: moment(element.date_last_updated).format('YYYY-MM-DD HH:mm:ss'),
+                            serial: element.serial,
+                            remarks: element.remarks,
+                        }, ()=> {}, ()=> {fetchEquipmentList(setEquipments)});
+                    } else {
+                        insertEquiment({
+                            type_id: element.type_id,
+                            status_id: element.status_id,
+                            logger_id: element.logger_id,
+                            date_last_updated: moment(element.date_last_updated).format('YYYY-MM-DD HH:mm:ss'),
+                            serial: element.serial,
+                            remarks: element.remarks,
+                            storage_path: element.storage_path,
+                            logger_name: element.logger_name
+                        }, ()=> {}, ()=> {fetchEquipmentList(setEquipments)}, element.imageFiles)
+                    }
+                }
+            });
+        });
+    }
 
     useEffect(() => {
-        let temp = [];
-        if (equipmentStatus.length > 0) {
-            equipmentStatus.forEach(element => {
-                temp.push(element.status);
-            });
+        if (isConnected != false) {
+            if (isSyncing == false) {
+                let temp = [];
+                if (equipmentTypes.length > 0) {
+                    equipmentTypes.forEach(element => {
+                        temp.push(element.equipment_name);
+                    });
+                }
+                setEquipmentListTypes(temp);
+                storeData('equipmentListTypes', temp);
+                storeData('equipmentTypes', equipmentTypes);
+                console.warn("equipmentTypes is Cached.....")
+            }
         }
-        setEquipmentStatusList(temp);
-    }, [equipmentStatus]);
+    }, [equipmentTypes, isConnected, isSyncing]);
 
     useEffect(() => {
-        let temp = [];
-        if (dataLoggers.length > 0) {
-            dataLoggers.forEach(element => {
-                temp.push(element.logger_name);
-            });
+        if (isConnected != false) {
+            if (isSyncing == false) {
+                let temp = [];
+                if (equipmentStatus.length > 0) {
+                    equipmentStatus.forEach(element => {
+                        temp.push(element.status);
+                    });
+                }
+                setEquipmentStatusList(temp);
+                storeData('equipmentStatusList', temp);
+                storeData('equipmentStatus', equipmentStatus);
+                console.warn("equipmentStatusList is Cached.....")
+            }
+
         }
-        setDataLoggerList(temp);
-    }, [dataLoggers]);
+
+    }, [equipmentStatus, isConnected, isSyncing]);
 
     useEffect(() => {
-        let temp = [];
-        if (dataLoggers.length > 0) {
-            dataLoggers.forEach(element => {
-                temp.push(element.logger_name);
-            });
+        if (isConnected != false)  {
+            if (isSyncing == false) {
+                let temp = [];
+                if (dataLoggers.length > 0) {
+                    dataLoggers.forEach(element => {
+                        temp.push(element.logger_name);
+                    });
+                }
+                setDataLoggerList(temp);
+                storeData('dataLoggerList', temp);
+                storeData('dataLoggers', dataLoggers);
+                console.warn("dataLoggerList is Cached.....")
+            }
         }
-        setDataLoggerList(temp);
-    }, [dataLoggers]);
+
+    }, [dataLoggers, isConnected, isSyncing]);
 
     useEffect(() => {
         if (returnVal) {
             if (returnVal.status === 200){ 
                 SweetAlert.showAlertWithOptions({
-                    title: 'New equipment added!',
+                    title: isUpdate ? 'Equipment updated!' : 'New equipment added!',
                     confirmButtonTitle: 'OK',
                     confirmButtonColor: '#000',
                     otherButtonTitle: 'Cancel',
@@ -137,10 +258,11 @@ const EquipmentManager = () => {
                     callback => {
                         resetForm();
                         setReturnVal(null);
+                        setIsUpdate(false);
                     });
             } else {
                 SweetAlert.showAlertWithOptions({
-                    title: 'Failed to add new equipment!',
+                    title: `Failed to ${isUpdate ? 'update':'add'} new equipment!`,
                     subTitle: 'Please fill up all fields.',
                     confirmButtonTitle: 'Retry',
                     confirmButtonColor: '#ff0000',
@@ -152,31 +274,105 @@ const EquipmentManager = () => {
     }, [returnVal]);
 
     useEffect(() => {
-        init(equipments);
-    }, [equipments])
+        if (isConnected == true) {
+            if (isSyncing == false) {
+                storeData('equipments', equipments);
+                init(equipments);
+            }
+        } else {
+            setDataTableContent([]);
+            init(equipments);
+        }
+    }, [equipments, 
+        isConnected, 
+        equipmentListTypes, 
+        equipmentStatusList, 
+        dataLoggerList,
+        dataLoggers,
+        equipmentTypes,
+        equipmentStatus,
+        isSyncing
+    ])
 
     useEffect(()=> {
-        init(equipments)
-    }, [from, to]);
+        if (isSyncing == false) {
+            init(equipments)
+        }
+    }, [from, to, isSyncing]);
     
     const submitEquipment = () => {
         let type_id = equipmentTypes.find(o => o.equipment_name === equipmentEntry.type).id;
-        let status_id = equipmentStatus.find(o => o.status === equipmentEntry.status).id;
-        let logger_id = dataLoggers.find(o => o.logger_name === equipmentEntry.logger).id;
+        let status_id = equipmentStatus.find(o => o.status === equipmentEntry.status.toLowerCase()).id;
+        let logger_id = dataLoggers.find(o => o.logger_name === equipmentEntry.logger.toLowerCase()).id;
         let storage_path = [];
-        imageFiles.forEach(element => {
-            storage_path.push(`storage/${equipmentEntry.logger}/${element.fileName}`)
-        });
-        insertEquiment({
-            type_id: type_id,
-            status_id: status_id,
-            logger_id: logger_id,
-            date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
-            serial: equipmentEntry.equipment_id,
-            remarks: equipmentEntry.remarks,
-            storage_path: JSON.stringify(storage_path),
-            logger_name: equipmentEntry.logger
-        }, setReturnVal, ()=> {fetchEquipmentList(setEquipments)}, imageFiles)
+
+        if (isUpdate) {
+            if (isConnected == true) {
+                updateEquipment({
+                    id: equipmentEntry.id,
+                    type_id: type_id,
+                    status_id: status_id,
+                    logger_id: logger_id,
+                    date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
+                    serial: equipmentEntry.equipment_id,
+                    remarks: equipmentEntry.remarks,
+                }, setReturnVal, ()=> {fetchEquipmentList(setEquipments)});
+            } else {
+                const index = equipments.findIndex(o => o.id === equipmentEntry.id)
+                let temp = [...equipments];
+                temp[index] = {
+                    id: equipmentEntry.id,
+                    type_id: type_id,
+                    status_id: status_id,
+                    logger_id: logger_id,
+                    date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
+                    serial: equipmentEntry.equipment_id,
+                    remarks: equipmentEntry.remarks,
+                    isLocal: true
+                };
+                setEquipments(temp);
+                storeData('equipments', temp);
+                setReturnVal({
+                    status: 200
+                });
+            }
+        } else {
+    
+            imageFiles.forEach(element => {
+                storage_path.push(`storage/${equipmentEntry.logger}/${element.fileName}`)
+            });
+            if (isConnected == true) {
+                insertEquiment({
+                    type_id: type_id,
+                    status_id: status_id,
+                    logger_id: logger_id,
+                    date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
+                    serial: equipmentEntry.equipment_id,
+                    remarks: equipmentEntry.remarks,
+                    storage_path: JSON.stringify(storage_path),
+                    logger_name: equipmentEntry.logger
+                }, setReturnVal, ()=> {fetchEquipmentList(setEquipments)}, imageFiles)
+            } else {
+                let temp = [...equipments];
+                temp.push({
+                    type_id: type_id,
+                    status_id: status_id,
+                    logger_id: logger_id,
+                    date_last_updated: moment(equipmentEntry.timestamp).format('YYYY-MM-DD HH:mm:ss'),
+                    serial: equipmentEntry.equipment_id,
+                    remarks: equipmentEntry.remarks,
+                    storage_path: JSON.stringify(storage_path),
+                    logger_name: equipmentEntry.logger,
+                    isLocal: true,
+                    imageFiles: imageFiles
+                });
+                setEquipments(temp);
+                storeData('equipments', temp);
+                setReturnVal({
+                    status: 200
+                });
+            }
+        }
     }
 
     const handleDatePicker = (event, selectedDate) => {
@@ -199,6 +395,7 @@ const EquipmentManager = () => {
               skipBackup: true,
               path: 'images',
             },
+            saveToPhotos: isConnected ? false : true
         };
 
 
@@ -213,20 +410,33 @@ const EquipmentManager = () => {
                     buttonPositive: "OK"
                 }
             );
-            if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            launchCamera(options, (res) => {
-                if (res.didCancel) {
-                    console.log('User cancelled image picker');
-                } else if (res.error) {
-                    console.log('ImagePicker Error: ', res.error);
-                } else if (res.customButton) {
-                    console.log('User tapped custom button: ', res.customButton);
-                    alert(res.customButton);
-                } else {
-                    const source = { uri: res.uri };
-                    setImageFiles([...imageFiles, res.assets[0]]);
+
+            const external = await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
+                {
+                 'title': 'Open mo yung permission gago!',
+                 'message': 'Pano ko issave to gago?',
+                 buttonNeutral: "Ask Me Later",
+                 buttonNegative: "Cancel",
+                 buttonPositive: "OK"
                 }
-            });
+            );
+
+            if (granted === PermissionsAndroid.RESULTS.GRANTED && external === PermissionsAndroid.RESULTS.GRANTED) {
+                console.warn("options:", options)
+                launchCamera(options, (res) => {
+                    if (res.didCancel) {
+                        console.log('User cancelled image picker');
+                    } else if (res.error) {
+                        console.log('ImagePicker Error: ', res.error);
+                    } else if (res.customButton) {
+                        console.log('User tapped custom button: ', res.customButton);
+                        alert(res.customButton);
+                    } else {
+                        const source = { uri: res.uri };
+                        setImageFiles([...imageFiles, res.assets[0]]);
+                    }
+                });
             } else {
             console.log("Camera permission denied");
             }
@@ -243,7 +453,8 @@ const EquipmentManager = () => {
             status: false,
             timestamp: new Date(),
             remarks: ''
-        })
+        });
+        setImageFiles([]);
     }
 
     const init = (data) => {
@@ -270,13 +481,19 @@ const EquipmentManager = () => {
                                         icon="content-save-edit"
                                         color={"#16526d"}
                                         size={20}
-                                        onPress={() => handleUpdate(row)}
+                                        onPress={() => {
+                                            handleUpdate(row);
+                                            setIsUpdate(true);
+                                        }}
                                     />
                                     <IconButton
                                         icon="view-grid"
                                         color={"#16526d"}
                                         size={20}
-                                        onPress={() => handleView(row)}
+                                        onPress={() => {
+                                            handleView(row);
+                                            setIsUpdate(true);
+                                        }}
                                     />
                                 </View>
                             </DataTable.Cell>
@@ -294,9 +511,28 @@ const EquipmentManager = () => {
         setDataTableContent(temp)
     }
 
+    useEffect(()=> {
+        
+    }, [isConnected])
+
     const handleUpdate = (props) => {
-        console.log("------------------ UPDATE");
-        console.log(props)
+        setEquipmentEntry({
+            equipment_id: props.serial,
+            type:  equipmentTypes.find(o => o.id === props.type_id).equipment_name,
+            logger: dataLoggers.find(o => o.id === props.logger_id).logger_name.toUpperCase(),
+            status: equipmentStatus.find(o => o.id === props.status_id).status.toUpperCase(),
+            timestamp: new Date(props.date_last_updated),
+            remarks: props.remarks,
+            is_update: true,
+            id: props.id
+        });
+
+        setShowModal(false);
+        ref_input1.current.focus()
+        scrollRef.current?.scrollTo({
+            y: 0,
+            animated: true,
+        });
     }
 
     const handleView = (props) => {
@@ -323,6 +559,21 @@ const EquipmentManager = () => {
         setPressHold(false);
         setImageThumbnail(null);
     }
+    
+    const wait = (timeout) => {
+        return new Promise(resolve => setTimeout(resolve, timeout));
+    }
+
+    const onRefresh = useCallback(() => {
+        setRefreshing(true);
+        
+        wait(3000).then(() => 
+            {
+                CheckConnectivity();
+                setRefreshing(false);
+            }
+        );
+      }, []);
 
     return(
         <Fragment>
@@ -330,11 +581,19 @@ const EquipmentManager = () => {
                 flex: 1,
                 justifyContent: "center"
             }}>
-            <ScrollView>
+            <ScrollView
+                ref={scrollRef}
+                refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                />
+              }>
                 <View style={{flex: 1, padding: 10}}>
                     <View style={{width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: 5}}>
                         <Text style={[systemWeights.light, {fontSize: 25, padding: 10, color: '#465242'}]}>Equipment Manager</Text>
                         <TextInput
+                            ref={ref_input1}
                             mode="outlined"
                             label="Equipment ID"
                             value={equipmentEntry.equipment_id}
@@ -344,6 +603,7 @@ const EquipmentManager = () => {
                         <SelectDropdown
                             data={equipmentListTypes}
                             defaultButtonText={"Equipment Type"}
+                            defaultValue={equipmentEntry.type ? equipmentEntry.type : ''}
                             onSelect={(selectedItem, index) => {
                                 setEquipmentEntry({...equipmentEntry, type: selectedItem});
                             }}
@@ -367,6 +627,7 @@ const EquipmentManager = () => {
                         <SelectDropdown
                             data={dataLoggerList}
                             defaultButtonText={"Data Logger name"}
+                            defaultValue={equipmentEntry.logger ? equipmentEntry.logger.toLowerCase() : ''}
                             onSelect={(selectedItem, index) => {
                                 setEquipmentEntry({...equipmentEntry, logger: selectedItem});
                             }}
@@ -388,9 +649,9 @@ const EquipmentManager = () => {
                             rowStyle={styles.dropdown1RowStyle}
                         />
                         <SelectDropdown
-                            // key={index}
                             data={equipmentStatusList}
                             defaultButtonText={"Status"}
+                            defaultValue={equipmentEntry.status ? equipmentEntry.status.toLowerCase() : ''}
                             onSelect={(selectedItem, index) => {
                                 setEquipmentEntry({...equipmentEntry, status: selectedItem});
                             }}
@@ -459,7 +720,7 @@ const EquipmentManager = () => {
                                 }
                         </View>
                         <Button icon="plus-thick" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={submitEquipment}>
-                            Add Equipment
+                            { isUpdate ? 'Update Equipment' : 'Add Equipment'}
                         </Button>
                     </View>
                     <View style={{padding: 20}}>
@@ -504,9 +765,15 @@ const EquipmentManager = () => {
             </ScrollView>
             </ImageBackground>
             <Modal isVisible={showModal}
-                onBackdropPress={()=> {setShowModal(!showModal)}}
-                onBackButtonPress={()=> {setShowModal(!showModal)}}
-                onSwipeComplete={() => {setShowModal(!showModal)}}
+                onBackdropPress={()=> {
+                    setShowModal(!showModal);
+                }}
+                onBackButtonPress={()=> {
+                    setShowModal(!showModal);
+                }}
+                onSwipeComplete={() => {
+                    setShowModal(!showModal);
+                }}
                 swipeDirection="down">
                     {
                         selectedEquipment != null &&
@@ -527,14 +794,40 @@ const EquipmentManager = () => {
                                         <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, paddingRight: 10, color: '#465242'}]}>{selectedEquipment.remarks === "" ? "No remarks available" : selectedEquipment.remarks === null ? "No remarks available": selectedEquipment.remarks}</Text>
                                     </View>
                                 </View>
-                                <View style={{flex: 0.45, margin: 10}}>
-                                    <Text style={[systemWeights.bold, {fontSize: 25, textAlign: 'center', padding: 10, color: '#465242'}]}>Equipment Gallery</Text>
-                                    <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: '#465242'}]}>No photos available</Text>
+                                <View style={{flex: 0.09, margin: 10}}>
+                                    <View style={{flex: 1}}>
+                                        <Text style={[systemWeights.bold, {fontSize: 25, textAlign: 'center', padding: 10, color: '#465242'}]}>Equipment Gallery</Text>
+                                    </View>
                                 </View>
-                                <View style={{flex: 0.10, textAlign: 'center'}}>
-                                <Button icon="content-save-edit" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={submitEquipment}>
-                                    Update Equipment
-                                </Button>
+                                <View style={{flex: 0.3, margin: 10}}>
+                                {
+                                    JSON.parse(selectedEquipment.storage_path).length == 0 ?
+                                        <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: '#465242'}]}>No photos available</Text>
+                                    :
+                                    <View style={{flexDirection: 'row', width: '100%'}}>
+                                        <ScrollView horizontal={true}>
+                                            {
+                                                JSON.parse(selectedEquipment.storage_path).map((image)=> (
+                                                    <TouchableOpacity style={{padding: 5, minHeight: 150, minWidth: 150}}
+                                                        onPress={()=> {
+                                                            handleImageViewer({
+                                                                uri: `http://192.168.0.13:5000/${image}`
+                                                            })
+                                                        }}>
+                                                        <Image source={{uri: `http://192.168.0.13:5000/${image}`}} resizeMode='cover' style={{flex: 1, height: 150, width: 150}} />
+                                                    </TouchableOpacity>
+                                                ))
+                                            }
+                                        </ScrollView>
+                                    </View>
+                                    }
+                                </View>
+                                <View style={{flex: 0.2, textAlign: 'center', justifyContent: 'flex-end'}}>
+                                    <Button icon="content-save-edit" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={()=> {
+                                        handleUpdate(selectedEquipment);
+                                    }}>
+                                        Update Equipment
+                                    </Button>
                                 </View>
                         </View>
                     }
@@ -551,13 +844,18 @@ const EquipmentManager = () => {
                     imageThumbnail != null && 
                         <ImageBackground source={{uri: imageThumbnail.uri}} resizeMode='cover' style={{flex: 1}} >
                             <View style={{flex: 1}}/>
-                            <Button icon="delete-forever" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} onPress={()=> {
+                            <Button icon="delete-forever" mode="contained" style={{backgroundColor: '#16526d', padding: 5, margin: 10}} disabled={isUpdate} onPress={()=> {
                                 handleImageRemove(imageThumbnail);
                             }}>
                                 Remove Photo
                             </Button>
                         </ImageBackground>
                 }
+            </Modal>
+            <Modal isVisible={isSyncing}>
+                <View style={{flex: 1, height: '100%', width: '100%', justifyContent: 'center'}}>
+                    <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: 'white'}]}>Syncing...</Text>
+                </View>
             </Modal>
         </Fragment>
     )

@@ -27,6 +27,9 @@ const Signin = (props) => {
 
     useEffect(()=> {
         getData('credentials', setCreds);
+        getData('equipmentListTypes', ()=> {});
+        getData('equipmentStatusList', ()=> {});
+        getData('dataLoggerList', ()=> {});
     }, []);
 
     useEffect(()=> {

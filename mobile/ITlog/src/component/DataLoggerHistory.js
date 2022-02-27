@@ -87,14 +87,14 @@ const DataLoggerHistory = () => {
                                         }}
                                         delayLongPress={5000}
                                         onLongPress={()=> {
-                                            handleLongPress(`http://192.168.150.138:5000/${element.img_path}`)
+                                            handleLongPress(`http://192.168.0.13:5000/${element.img_path}`)
                                         }}
                                         onPressOut={()=> {
                                             setPressHold(false);
                                             setImageThumbnail(null);
                                         }}>
                                             {
-                                                element.img_path != null && <ImageBackground source={{uri: `http://192.168.150.138:5000/${element.img_path}`}} resizeMode='cover' style={{flex: 1}}>
+                                                element.img_path != null && <ImageBackground source={{uri: `http://192.168.0.13:5000/${element.img_path}`}} resizeMode='cover' style={{flex: 1}}>
                                                     <View style={{flex: 0.74}}/>
                                                     <View style={{flex: 0.26}}>
                                                         <View style={{alignItems: 'flex-end', justifyContent: 'flex-end', height: 40, width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.8)'}}>
@@ -114,11 +114,10 @@ const DataLoggerHistory = () => {
             <Modal isVisible={showModal}
                 onBackdropPress={()=> {setShowModal(!showModal)}}
                 onBackButtonPress={()=> {setShowModal(!showModal)}}
-                onSwipeComplete={() => {setShowModal(!showModal)}}
-                swipeDirection="down">
+                >
                 {
                     highlightedRecord != undefined && highlightedRecord != null &&
-                        <View style={{ flex: 1 ,backgroundColor: 'white'}}>
+                        <View style={{ flex: 1 ,backgroundColor: 'white' }}>
                             <ScrollView>
                                 <View style={{flex: 0.45, flexDirection: 'row', padding: 10}}>
                                     <View style={{flex: 0.5}}>
@@ -140,7 +139,41 @@ const DataLoggerHistory = () => {
                                 <Text style={[systemWeights.bold, {fontSize: 25, textAlign: 'center', padding: 10, color: '#465242'}]}>Equipment Gallery</Text>
                                 <Text style={[systemWeights.light, {fontSize: 18, paddingLeft: 10, textAlign: 'center', paddingRight: 10, color: '#465242'}]}>No photos available</Text>
                                 </View>
-                                <View style={{flex: 0.10, textAlign: 'center'}}>
+
+                                <ScrollView horizontal={true}>
+                                    <DataTable>
+                                        <DataTable.Header>
+                                            <DataTable.Title style={{width: 100}}>Serial #</DataTable.Title>
+                                            <DataTable.Title style={{width: 250}}>Equipment type</DataTable.Title>
+                                            <DataTable.Title style={{width: 100}}>Logger name</DataTable.Title>
+                                            <DataTable.Title style={{width: 100}}>Status</DataTable.Title>
+                                            <DataTable.Title style={{width: 150}}>Last updated</DataTable.Title>
+                                        </DataTable.Header>
+                                        {
+                                            loggerRecords != null && loggerRecords.map((row)=> (
+                                                <DataTable.Row key={row.id}>
+                                                    <DataTable.Cell style={{width: 100}}>{row.serial}</DataTable.Cell>
+                                                    <DataTable.Cell style={{width: 250}}>{row.equipment_type.toUpperCase()}</DataTable.Cell>
+                                                    <DataTable.Cell style={{width: 100}}>{row.logger_name.toUpperCase()}</DataTable.Cell>
+                                                    <DataTable.Cell style={{width: 100}}>{row.status.toUpperCase()}</DataTable.Cell>
+                                                    <DataTable.Cell style={{width: 150}}>{moment(row.last_updated).format("YYYY-MM-DD HH:mm:ss")}</DataTable.Cell>
+                                                </DataTable.Row>
+                                            ))
+                                        }
+                                    </DataTable>
+                                </ScrollView>
+                                <DataTable.Pagination
+                                    page={0}
+                                    numberOfPages={3}
+                                    onPageChange={(page) => console.log(page)}
+                                    label="1-2 of 6"
+                                    optionsPerPage={0}
+                                    itemsPerPage={0}
+                                    showFastPagination
+                                    optionsLabel={'Rows per page'}
+                                />
+
+                                {/* <View style={{flex: 0.10, textAlign: 'center'}}>
                                     <View style={{width: '100%', backgroundColor: 'rgba(255, 255, 255, 0.8)', borderRadius: 5}}>
                                         <ScrollView horizontal={true}>
                                             <DataTable>
@@ -175,7 +208,7 @@ const DataLoggerHistory = () => {
                                             optionsLabel={'Rows per page'}
                                         />
                                     </View>
-                                </View>
+                                </View> */}
                             </ScrollView>
                         </View>
                     }

@@ -27,6 +27,7 @@
     "react-native-modal-datetime-picker": "^13.0.1",
     "react-native-pager-view": "^5.4.9",
     "react-native-paper": "^4.11.2",
+    "react-native-ping": "^1.2.6",
     "react-native-safe-area-context": "^3.3.2",
     "react-native-screens": "^3.10.2",
     "react-native-select-dropdown": "^1.7.0",
